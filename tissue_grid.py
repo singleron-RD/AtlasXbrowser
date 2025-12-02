@@ -2,6 +2,7 @@ from tkinter import *
 from PIL import Image
 import cv2
 import math
+import numpy as np
 
 
 class Tissue():
@@ -72,18 +73,41 @@ class Tissue():
 
         self.theAnswer()
 
-    def calculate_avg(self,pic, points, dist):
-        sum = 0
-        k = 0
-        w = pic.shape[1] - 1
-        h = pic.shape[0] - 1
-        topCoords = self.coords(points[0], points[1], dist)
-        for i in topCoords:
-            downCoords = self.downCoords(i, dist)
-            for j in downCoords:
-                k += 1
-                sum += pic[min(h,round(j[1])), min(w,round(j[0]))]
-        return sum/k
+    def calculate_avg(self, pic, points, dist):
+        """
+        Vectorized average over quadrilateral area defined by 'points' on image 'pic'.
+        points: list of four [x,y] (floats)
+        pic: numpy array (grayscale) (height, width)
+        dist: kept for compatibility but not used in this fast path
+        Returns mean pixel value (float).
+        """
+        # Convert to floats and compute integer bounding box (clamped)
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        x_min = max(0, int(math.floor(min(xs))))
+        x_max = min(pic.shape[1] - 1, int(math.ceil(max(xs))))
+        y_min = max(0, int(math.floor(min(ys))))
+        y_max = min(pic.shape[0] - 1, int(math.ceil(max(ys))))
+
+        # Empty or degenerate region -> treat as background (white)
+        if x_max < x_min or y_max < y_min:
+            return 255.0
+
+        # Create local polygon (shift coords to local box origin)
+        poly = np.array([[[int(round(p[0])) - x_min, int(round(p[1])) - y_min] for p in points]], dtype=np.int32)
+
+        # Create mask for bounding box and fill polygon
+        h_box = y_max - y_min + 1
+        w_box = x_max - x_min + 1
+        mask = np.zeros((h_box, w_box), dtype=np.uint8)
+        cv2.fillPoly(mask, poly, 1)
+
+        # Slice the region from the image and compute mean only on masked pixels
+        region = pic[y_min:y_max + 1, x_min:x_max + 1]
+        vals = region[mask == 1]
+        if vals.size == 0:
+            return 255.0
+        return float(vals.mean())
 
     def ratio50l(self,xc,yc,xr,yr,num):
         txp = xc + (1/(num))*(xr-xc)
