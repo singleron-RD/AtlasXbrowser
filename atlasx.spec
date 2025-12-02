@@ -44,7 +44,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False, # 隐藏控制台
+    console=True,
     icon=None,
 )
 

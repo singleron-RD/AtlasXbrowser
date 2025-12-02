@@ -524,10 +524,10 @@ class Gui():
         #retrieving variables from stored StringVar variables
         runID = self.run_identifier.get()
         if runID != "":
+            self.runID = runID
             if self.custom_barcode_valid or self.custom_barcode_selected == False:
-                val = self.user_selected_bsa.rfind("/")
-                self.bsa_short = self.user_selected_bsa[val + 1: ]
-                self.folder_selected = self.user_selected_bsa[:val]
+                self.bsa_short = os.path.basename(self.user_selected_bsa)
+                self.folder_selected = os.path.dirname(self.user_selected_bsa)
                 self.postB_short = "{}_postB.tif".format(runID)
                 self.metadata = {
                 "run": runID
@@ -1421,7 +1421,7 @@ class Gui():
     #Creates files for spatial folder
     def create_files(self):
         try:
-            path = os.path.join(self.folder_selected, "spatial")
+            path = os.path.join(self.folder_selected, f"{self.runID}-spatial")
             os.mkdir(path)
         except FileExistsError:
             path = self.folder_selected + "/spatial"
